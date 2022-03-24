@@ -1,0 +1,23 @@
+{
+  "name": "20byte",
+  "version": "1.0.0",
+  "description": "eth pubkey -> address",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lsankar4033/20byte.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/lsankar4033/20byte/issues"
+  },
+  "homepage": "https://github.com/lsankar4033/20byte#readme",
+  "dependencies": {
+    "axios": "0.26.1",
+    "ethers": "5.6.1"
+  }
+}
