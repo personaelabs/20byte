@@ -144,4 +144,4 @@ async function checkPubkeys() {
   return success;
 }
 
-
+await continueBuildingAddressPubkeyCSV();
