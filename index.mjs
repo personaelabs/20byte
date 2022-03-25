@@ -43,7 +43,7 @@ async function getPubkey(address) {
         value: tx.value,
         nonce: tx.nonce,
         data: tx.data,
-        chainId: 1, // NOTE: always mainnet
+        chainId: tx.chainId, // NOTE: always mainnet
         to: tx.to
       };
       break;
