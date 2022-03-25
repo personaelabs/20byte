@@ -3,13 +3,18 @@ import fs from 'fs';
 import axios from 'axios';
 import { ethers } from 'ethers';
 
+import pkg from 'csvtojson';
+const { csv } = pkg;
+
+import sleep from 'sleep-promise';
+
 const etherscan_api_key = JSON.parse(fs.readFileSync('secrets.json'))['ETHERSCAN_API_KEY'];
 
 const ethers_provider = ethers.getDefaultProvider('homestead', {
   etherscan: etherscan_api_key
 });
 
-async function getPubkey(address) {
+async function getPubkey(address, wait=false) {
   console.log(`Searching for first tx for address ${address}`);
   let tx_res = await axios.get('https://api.etherscan.io/api' +
                           '?module=account' +
@@ -18,6 +23,9 @@ async function getPubkey(address) {
                           '&startblock=0' +
                           '&endblock=99999999' +
                           `&apikey=${etherscan_api_key}`);
+  if (wait) {
+    await sleep(200);
+  }
 
   let txes = tx_res['data']['result'];
   let from_txes = txes.filter(tx => tx.from.toLowerCase() == address.toLowerCase());
@@ -25,7 +33,9 @@ async function getPubkey(address) {
   console.log(`Finding signature for tx ${tx_hash}`);
 
   let tx = await ethers_provider.getTransaction(tx_hash);
-  console.log(tx);
+  if (wait) {
+    await sleep(200);
+  }
 
   // NOTE: taken from static data for now
   let expandedSig = {
@@ -76,26 +86,42 @@ async function getPubkey(address) {
   let pubkey = ethers.utils.recoverPublicKey(msgBytes, sig)
 
   console.log(`retrieved pubkey: ${pubkey}`);
-  // NOTE: for sanity checking
+
   let recoveredAddress = ethers.utils.computeAddress(pubkey);
-  console.log(`recovered address: ${recoveredAddress}`);
+  if (recoveredAddress.toLowerCase() != address.toLowerCase()) {
+    throw 'recovered address differs from original!'
+  }
 
   return pubkey
 }
 
-// TODO: code for pulling all pubkeys, create addr->pubkey mapping
-// just all addresses for now
-//const addresses = [...new Set(
-  //Object.values(
-    //JSON.parse(fs.readFileSync('data/devconAddresses.json'))
-  //).flat()
-//)];
+async function continueBuildingAddressPubkeyCSV() {
+  const allAddresses = new Set(
+    Object.values(
+      JSON.parse(fs.readFileSync('data/devconAddresses.json'))
+    ).flat()
+  );
 
-//// 5 api calls/sec, 2 calls per address
-//let i = 0;
-//for (let a of addresses) {
-  //const pubkey = await getPubkey(a);
-  //// stream pubkeys out
+  let rows = await csv().fromFile('output/addressPubkeys.csv');
+  const finishedAddresses = new Set(
+    rows.map(r => r['address'])
+  )
 
-  //i++;
-//}
+  const addressesToProcess = [...new Set(
+    [...allAddresses].filter(a => !finishedAddresses.has(a))
+  )];
+
+  for (let a of allAddresses) {
+    try {
+      const pubkey = await getPubkey(a, true);
+      fs.appendFileSync('output/addressPubkeys.csv', `${a},${pubkey}\n`);
+    }
+
+    catch (e) {
+      console.log(`failed on address ${a}: ${e}`);
+      continue;
+    }
+  }
+}
+
+await continueBuildingAddressPubkeyCSV();
