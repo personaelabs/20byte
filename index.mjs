@@ -110,8 +110,9 @@ async function continueBuildingAddressPubkeyCSV() {
   const addressesToProcess = [...new Set(
     [...allAddresses].filter(a => !finishedAddresses.has(a))
   )];
+  console.log(`remaining addresses: ${addressesToProcess.length}`);
 
-  for (let a of allAddresses) {
+  for (let a of addressesToProcess) {
     try {
       const pubkey = await getPubkey(a, true);
       fs.appendFileSync('output/addressPubkeys.csv', `${a},${pubkey}\n`);
@@ -124,4 +125,23 @@ async function continueBuildingAddressPubkeyCSV() {
   }
 }
 
-await continueBuildingAddressPubkeyCSV();
+async function checkPubkeys() {
+  let rows = await csv().fromFile('output/addressPubkeys.csv');
+
+  let success = true;
+  for (let row of rows) {
+    let address = row['address']
+    let pubkey = row['pubkey']
+
+    let recoveredAddress = ethers.utils.computeAddress(pubkey);
+
+    if (address.toLowerCase() != recoveredAddress.toLowerCase()) {
+      console.log(`wrong pubkey ${pubkey} for address ${address}`);
+      success = false
+    }
+  }
+
+  return success;
+}
+
+
